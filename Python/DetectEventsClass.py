@@ -34,21 +34,17 @@ class DetectEventsClass():
         #### Normalize signals to have 0 median in each channel
         med = np.median(x, axis=0)
         x_norm = x - med
-        if self.__verbose:
-            _print(x_norm)
-
+        
         #### Compute the cumulative sum
         cum_sum = np.cumsum(np.abs(x_norm), axis=0)
-        if self.__verbose:
-            _print(cum_sum)
-
+        
         #### Compute the variance on the windowed cumulative sum
         var = []
         for i in range(0, N-w, w):
             var.append(np.var(x[i:i+w,:], axis=0))
         var = np.asarray(var)
         ma = np.max(var) # find the maximum variance peak along all the channel
-        th = 0.05*ma # compute the threshold to detect the events
+        th = 0.07*ma # compute the threshold to detect the events
 
         #### Find the indexes for all the sensors where the variance exceeds the threshold
         ind= []
@@ -67,22 +63,22 @@ class DetectEventsClass():
         ind_freq = np.where(np.asarray(freq)==new_freq[iii])[0] 
 
         indexes = []
-        while(len(indexes)<2): # loop until the procedure does not find two events
-            
+        while(len(indexes)<3): # loop until the procedure does not find two events
             #### Extract the indexes of the variances based on the greates frequencies
-            indexes = []
+
             for i in ind_freq:
-                indexes.append(ind[i])
-            indexes = np.unique(np.asarray(indexes))
+                tmp = ind[i]
+                di = []
+                if indexes:
+                    di = [abs(j-tmp) for j in indexes]
+                    if np.all(np.asarray(di)>5):
+                        indexes.append(tmp)
+                else:
+                    indexes.append(tmp)
 
-            #### Remove indexes that are close meaning that they belong to the same event
-            diff = np.diff(indexes)
-            indexes_list = list(indexes)
-            for i in range(len(diff)-1, -1, -1):
-                if diff[i] <5: # the distance has been chosen as 5 points
-                    del indexes_list[i+1]
-            indexes = np.asarray(indexes_list)
-
+            indexes.sort()
+            
+            
             #### Find the indexes for the subsequent highest frequency 
             iii -= 1
             try:
@@ -95,9 +91,16 @@ class DetectEventsClass():
         else:
             self.__save = True
         if self.__verbose:
+            ii = [i*self.__w for i in indexes]
+            _print(x_norm, ii)
+        if self.__verbose:
+            ii = [i*self.__w for i in indexes]
+            _print(cum_sum, ii)
+        if self.__verbose:
             _print(var, indexes)
             plt.show()
         return indexes
+        
 
     def get_indexes(self):
         return self.__ind
